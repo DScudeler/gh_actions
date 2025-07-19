@@ -37,15 +37,24 @@ cargo fmt
 - **Rust Backend** (`src/task.rs`): Core task management logic
 - **WASM Bindings** (`src/wasm.rs`): JavaScript interoperability layer  
 - **Web Frontend** (`www/`): HTML/CSS/JS interface
-- **CI/CD Pipeline** (`.github/workflows/`): Automated testing and deployment
+- **CI/CD Templates**: Ready-to-use GitHub Actions workflow templates
 
 ## 🚢 Deployment
 
-GitHub Actions automatically:
-- Runs tests and quality checks
-- Builds WASM package with wasm-pack
-- Deploys to GitHub Pages on main branch
-- Provides preview builds for pull requests
+### GitHub Actions Setup
+This project includes ready-to-use GitHub Actions workflows for:
+- **Continuous Integration**: Automated testing, linting, and WASM builds
+- **Continuous Deployment**: Auto-deploy to GitHub Pages on main branch updates
+
+**Quick Setup:**
+```bash
+# Copy workflow templates to .github/workflows/
+mkdir -p .github/workflows
+cp ci-test-workflow.yml .github/workflows/ci.yml
+cp cd-deploy-workflow.yml .github/workflows/deploy.yml
+```
+
+For detailed setup instructions, see [`GITHUB_ACTIONS_SETUP.md`](./GITHUB_ACTIONS_SETUP.md).
 
 ## 📋 Task Management
 

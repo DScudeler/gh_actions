@@ -1,0 +1,61 @@
+name: CI - Test and Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+        components: rustfmt, clippy
+
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Install wasm-pack
+      run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+    - name: Check formatting
+      run: cargo fmt -- --check
+
+    - name: Run Clippy
+      run: cargo clippy -- -D warnings
+
+    - name: Run tests
+      run: cargo test --verbose
+
+    - name: Run benchmarks (dry run)
+      run: cargo bench --no-run
+
+    - name: Build WASM package
+      run: ./build-wasm.sh
+
+    - name: Upload WASM artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: wasm-package
+        path: www/pkg/
+        retention-days: 30
