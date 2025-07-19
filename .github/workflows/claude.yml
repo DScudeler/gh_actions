@@ -19,9 +19,9 @@ jobs:
       (github.event_name == 'issues' && contains(github.event.issue.body, '@claude'))
     runs-on: ubuntu-latest
     permissions:
-      contents: read write
+      contents: write
       pull-requests: read
-      issues: read write
+      issues: write
       id-token: write
     steps:
       - name: Checkout repository
