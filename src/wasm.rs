@@ -1,7 +1,9 @@
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
 use crate::task::{TaskManager, Task};
 use crate::app::TaskManagerApp;
 use std::sync::Mutex;
+use web_sys::HtmlCanvasElement;
 
 // Global task manager instance
 lazy_static::lazy_static! {
@@ -170,12 +172,20 @@ pub fn start_egui_app(canvas_id: &str) {
     
     let web_options = eframe::WebOptions::default();
     
-    wasm_bindgen_futures::spawn_local(async {
+    wasm_bindgen_futures::spawn_local(async move {
+        let window = web_sys::window().unwrap();
+        let document = window.document().unwrap();
+        let canvas = document
+            .get_element_by_id(canvas_id)
+            .unwrap()
+            .dyn_into::<HtmlCanvasElement>()
+            .unwrap();
+        
         let result = eframe::WebRunner::new()
             .start(
-                canvas_id,
+                canvas,
                 web_options,
-                Box::new(|_cc| Box::new(TaskManagerApp::new())),
+                Box::new(|_cc| Ok(Box::new(TaskManagerApp::new()))),
             )
             .await;
             
