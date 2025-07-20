@@ -2,6 +2,8 @@ pub mod task;
 pub mod wasm;
 pub mod user_manager;
 pub mod utils;
+pub mod app;
+pub mod kpi_app;
 
 pub use task::{Task, TaskManager};
 pub use user_manager::{User, UserManager};

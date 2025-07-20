@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>WASM Task Manager with KPI Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f0f0f0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: white;
+            padding: 10px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .header h1 {
+            margin: 0;
+            color: #333;
+            font-size: 1.5em;
+        }
+        
+        .toggle-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .toggle-btn {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .toggle-btn:hover {
+            background: #5a67d8;
+        }
+        
+        .toggle-btn.active {
+            background: #4c51bf;
+        }
+        
+        .app-container {
+            width: 100vw;
+            height: calc(100vh - 70px);
+            position: relative;
+        }
+        
+        #egui-canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .legacy-interface {
+            display: none;
+            padding: 20px;
+            height: calc(100vh - 110px);
+            overflow-y: auto;
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            font-size: 1.2em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 WASM Task Manager with KPI Dashboard</h1>
+        <div class="toggle-buttons">
+            <button class="toggle-btn active" id="egui-btn" onclick="showEguiInterface()">
+                📊 Modern Interface
+            </button>
+            <button class="toggle-btn" id="legacy-btn" onclick="showLegacyInterface()">
+                📋 Legacy Interface
+            </button>
+        </div>
+    </div>
+    
+    <div class="app-container">
+        <!-- egui canvas -->
+        <canvas id="egui-canvas"></canvas>
+        
+        <!-- Legacy HTML interface (hidden by default) -->
+        <div class="legacy-interface" id="legacy-interface">
+            <div class="loading">Loading legacy interface...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import init, { 
+            init as wasm_init, 
+            start_egui_app,
+            add_task, 
+            toggle_task, 
+            remove_task, 
+            get_task_count, 
+            get_completed_count, 
+            get_all_tasks_json 
+        } from './pkg/gh_actions.js';
+
+        let wasmModule = null;
+        let currentInterface = 'egui';
+
+        // localStorage functions for WASM to call
+        window.saveToLocalStorage = function(data) {
+            try {
+                localStorage.setItem('wasm-tasks', data);
+                console.log('Tasks saved to localStorage');
+            } catch (error) {
+                console.error('Failed to save to localStorage:', error);
+            }
+        };
+
+        window.loadFromLocalStorage = function() {
+            try {
+                const data = localStorage.getItem('wasm-tasks');
+                console.log('Loading tasks from localStorage:', data ? 'found data' : 'no data');
+                return data || '';
+            } catch (error) {
+                console.error('Failed to load from localStorage:', error);
+                return '';
+            }
+        };
+
+        async function initWasm() {
+            try {
+                console.log('Initializing WASM module...');
+                wasmModule = await init();
+                wasm_init();
+                console.log('WASM module loaded successfully');
+                
+                // Start egui app by default
+                startEguiApp();
+                
+            } catch (error) {
+                console.error('Failed to load WASM module:', error);
+                document.getElementById('egui-canvas').style.display = 'none';
+                document.querySelector('.loading').innerHTML = 'Failed to load WASM module. Please check console for errors.';
+            }
+        }
+
+        function startEguiApp() {
+            try {
+                console.log('Starting egui app...');
+                start_egui_app('egui-canvas');
+            } catch (error) {
+                console.error('Failed to start egui app:', error);
+            }
+        }
+
+        window.showEguiInterface = function() {
+            currentInterface = 'egui';
+            document.getElementById('egui-canvas').style.display = 'block';
+            document.getElementById('legacy-interface').style.display = 'none';
+            document.getElementById('egui-btn').classList.add('active');
+            document.getElementById('legacy-btn').classList.remove('active');
+        };
+
+        window.showLegacyInterface = function() {
+            currentInterface = 'legacy';
+            document.getElementById('egui-canvas').style.display = 'none';
+            document.getElementById('legacy-interface').style.display = 'block';
+            document.getElementById('egui-btn').classList.remove('active');
+            document.getElementById('legacy-btn').classList.add('active');
+            
+            // Load legacy interface content
+            loadLegacyInterface();
+        };
+
+        function loadLegacyInterface() {
+            const container = document.getElementById('legacy-interface');
+            
+            // Create basic legacy interface
+            container.innerHTML = `
+                <div style="max-width: 800px; margin: 0 auto;">
+                    <div style="background: white; border-radius: 10px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <h2>📋 Legacy Task Interface</h2>
+                        
+                        <div style="display: flex; justify-content: space-around; margin: 20px 0; background: #f8f9fa; padding: 20px; border-radius: 8px;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 2em; font-weight: bold; color: #667eea;" id="legacy-total">0</div>
+                                <div style="color: #666; font-size: 0.9em;">Total Tasks</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 2em; font-weight: bold; color: #667eea;" id="legacy-completed">0</div>
+                                <div style="color: #666; font-size: 0.9em;">Completed</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 2em; font-weight: bold; color: #667eea;" id="legacy-remaining">0</div>
+                                <div style="color: #666; font-size: 0.9em;">Remaining</div>
+                            </div>
+                        </div>
+                        
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                            <h3>Add New Task</h3>
+                            <div style="margin: 10px 0;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Title</label>
+                                <input type="text" id="legacy-title" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
+                            </div>
+                            <div style="margin: 10px 0;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Description</label>
+                                <textarea id="legacy-description" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; height: 80px; resize: vertical;"></textarea>
+                            </div>
+                            <button onclick="legacyAddTask()" style="background: #667eea; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold;">Add Task</button>
+                        </div>
+                        
+                        <div id="legacy-tasks"></div>
+                    </div>
+                </div>
+            `;
+            
+            updateLegacyUI();
+        }
+
+        function updateLegacyUI() {
+            if (!wasmModule || currentInterface !== 'legacy') return;
+            
+            const totalCount = get_task_count();
+            const completedCount = get_completed_count();
+            const remainingCount = totalCount - completedCount;
+            
+            document.getElementById('legacy-total').textContent = totalCount;
+            document.getElementById('legacy-completed').textContent = completedCount;
+            document.getElementById('legacy-remaining').textContent = remainingCount;
+            
+            try {
+                const tasksJson = get_all_tasks_json();
+                const tasks = JSON.parse(tasksJson);
+                renderLegacyTasks(tasks);
+            } catch (error) {
+                console.error('Error parsing tasks:', error);
+            }
+        }
+
+        function renderLegacyTasks(tasks) {
+            const container = document.getElementById('legacy-tasks');
+            
+            if (tasks.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No tasks yet. Add one above!</div>';
+                return;
+            }
+            
+            container.innerHTML = `<h3>Tasks</h3>` + tasks.map(task => `
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 15px 0; ${task.completed ? 'background: #f0fff4; border-color: #68d391;' : ''}">
+                    <div style="display: flex; align-items: flex-start; gap: 15px;">
+                        <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="legacyToggleTask(${task.id})" style="margin-top: 4px;">
+                        <div style="flex: 1;">
+                            <div style="font-size: 18px; font-weight: bold; color: #2d3748; margin-bottom: 8px; ${task.completed ? 'text-decoration: line-through; color: #68d391;' : ''}">${escapeHtml(task.title)}</div>
+                            <div style="color: #4a5568; margin-bottom: 15px;">${escapeHtml(task.description)}</div>
+                        </div>
+                        <button onclick="legacyRemoveTask(${task.id})" style="background: #f56565; color: white; border: none; border-radius: 4px; padding: 8px 16px; cursor: pointer; font-size: 12px;">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        window.legacyAddTask = function() {
+            const title = document.getElementById('legacy-title').value.trim();
+            const description = document.getElementById('legacy-description').value.trim();
+            
+            if (!title) {
+                alert('Please enter a task title');
+                return;
+            }
+            
+            add_task(title, description);
+            document.getElementById('legacy-title').value = '';
+            document.getElementById('legacy-description').value = '';
+            updateLegacyUI();
+        };
+
+        window.legacyToggleTask = function(id) {
+            toggle_task(id);
+            updateLegacyUI();
+        };
+
+        window.legacyRemoveTask = function(id) {
+            if (confirm('Are you sure you want to delete this task?')) {
+                remove_task(id);
+                updateLegacyUI();
+            }
+        };
+
+        // Initialize when page loads
+        initWasm();
+    </script>
+</body>
+</html>
