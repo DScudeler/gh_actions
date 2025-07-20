@@ -26,8 +26,8 @@ impl Task {
 
 #[derive(Debug, Default)]
 pub struct TaskManager {
-    tasks: HashMap<u32, Task>,
-    next_id: u32,
+    pub(crate) tasks: HashMap<u32, Task>,
+    pub(crate) next_id: u32,
 }
 
 impl TaskManager {
