@@ -176,7 +176,7 @@ pub fn start_egui_app(canvas_id: &str) {
         let window = web_sys::window().unwrap();
         let document = window.document().unwrap();
         let canvas = document
-            .get_element_by_id(canvas_id)
+            .get_element_by_id(&canvas_id)
             .unwrap()
             .dyn_into::<HtmlCanvasElement>()
             .unwrap();
