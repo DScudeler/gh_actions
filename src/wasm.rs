@@ -171,7 +171,7 @@ pub fn start_egui_app(canvas_id: &str) {
     console_log!("Starting egui app on canvas: {}", canvas_id);
     
     let web_options = eframe::WebOptions::default();
-    
+    let canvas_id = canvas_id.to_string();
     wasm_bindgen_futures::spawn_local(async move {
         let window = web_sys::window().unwrap();
         let document = window.document().unwrap();
