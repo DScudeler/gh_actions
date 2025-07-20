@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Task {
@@ -7,6 +8,8 @@ pub struct Task {
     pub title: String,
     pub description: String,
     pub completed: bool,
+    pub created_at: DateTime<Utc>,
+    pub completed_at: Option<DateTime<Utc>>,
 }
 
 impl Task {
@@ -16,11 +19,18 @@ impl Task {
             title,
             description,
             completed: false,
+            created_at: Utc::now(),
+            completed_at: None,
         }
     }
     
     pub fn toggle_completed(&mut self) {
         self.completed = !self.completed;
+        self.completed_at = if self.completed {
+            Some(Utc::now())
+        } else {
+            None
+        };
     }
 }
 
@@ -73,6 +83,41 @@ impl TaskManager {
     
     pub fn get_total_count(&self) -> usize {
         self.tasks.len()
+    }
+    
+    pub fn get_tasks_created_since(&self, since: DateTime<Utc>) -> Vec<&Task> {
+        self.tasks.values()
+            .filter(|task| task.created_at >= since)
+            .collect()
+    }
+    
+    pub fn get_tasks_completed_since(&self, since: DateTime<Utc>) -> Vec<&Task> {
+        self.tasks.values()
+            .filter(|task| {
+                if let Some(completed_at) = task.completed_at {
+                    completed_at >= since
+                } else {
+                    false
+                }
+            })
+            .collect()
+    }
+    
+    pub fn get_average_completion_time_hours(&self) -> Option<f64> {
+        let completed_tasks: Vec<_> = self.tasks.values()
+            .filter_map(|task| {
+                task.completed_at.map(|completed| {
+                    let duration = completed.signed_duration_since(task.created_at);
+                    duration.num_seconds() as f64 / 3600.0 // Convert to hours
+                })
+            })
+            .collect();
+            
+        if completed_tasks.is_empty() {
+            None
+        } else {
+            Some(completed_tasks.iter().sum::<f64>() / completed_tasks.len() as f64)
+        }
     }
 }
 

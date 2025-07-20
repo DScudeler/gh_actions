@@ -1,5 +1,6 @@
 use wasm_bindgen::prelude::*;
 use crate::task::{TaskManager, Task};
+use crate::app::TaskManagerApp;
 use std::sync::Mutex;
 
 // Global task manager instance
@@ -161,4 +162,25 @@ impl From<&Task> for WasmTask {
             completed: task.completed,
         }
     }
+}
+
+#[wasm_bindgen]
+pub fn start_egui_app(canvas_id: &str) {
+    console_log!("Starting egui app on canvas: {}", canvas_id);
+    
+    let web_options = eframe::WebOptions::default();
+    
+    wasm_bindgen_futures::spawn_local(async {
+        let result = eframe::WebRunner::new()
+            .start(
+                canvas_id,
+                web_options,
+                Box::new(|_cc| Box::new(TaskManagerApp::new())),
+            )
+            .await;
+            
+        if let Err(e) = result {
+            console_log!("Failed to start egui app: {:?}", e);
+        }
+    });
 }
