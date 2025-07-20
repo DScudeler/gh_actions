@@ -1,4 +1,6 @@
-use egui::*;
+use egui::{Context, CentralPanel, Layout, Align, ScrollArea, Color32};
+use eframe::App;
+use egui_plot::{Line, Plot, PlotPoints};
 use crate::kpi_app::KpiApp;
 
 #[derive(Default)]
@@ -23,8 +25,8 @@ impl TaskManagerApp {
     }
 }
 
-impl eframe::App for TaskManagerApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+impl App for TaskManagerApp {
+    fn update(&mut self, ctx: &Context, frame: &mut eframe::Frame) {
         match self.current_view {
             AppView::TaskManager => {
                 self.show_task_manager(ctx, frame);
@@ -37,11 +39,11 @@ impl eframe::App for TaskManagerApp {
 }
 
 impl TaskManagerApp {
-    fn show_task_manager(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+    fn show_task_manager(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
+        CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.heading("🚀 WASM Task Manager");
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     if ui.button("📊 View KPIs").clicked() {
                         self.current_view = AppView::KpiDashboard;
                     }
@@ -66,11 +68,11 @@ impl TaskManagerApp {
         });
     }
     
-    fn show_kpi_dashboard(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+    fn show_kpi_dashboard(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
+        CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.heading("📊 Task Management KPIs");
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     if ui.button("← Back to Tasks").clicked() {
                         self.current_view = AppView::TaskManager;
                     }
@@ -167,7 +169,7 @@ impl TaskManagerApp {
                 if tasks.is_empty() {
                     ui.label("No tasks yet. Add one above!");
                 } else {
-                    egui::ScrollArea::vertical().show(ui, |ui| {
+                    ScrollArea::vertical().show(ui, |ui| {
                         for task in tasks.iter() {
                             ui.group(|ui| {
                                 ui.horizontal(|ui| {
@@ -182,7 +184,7 @@ impl TaskManagerApp {
                                         }
                                     });
                                     
-                                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                         if ui.button("🗑").clicked() {
                                             crate::wasm::remove_task(task.id);
                                         }
@@ -276,7 +278,7 @@ impl TaskManagerApp {
             .show(ui, |plot_ui| {
                 plot_ui.line(
                     Line::new(PlotPoints::from(points))
-                        .color(egui::Color32::from_rgb(100, 200, 100))
+                        .color(Color32::from_rgb(100, 200, 100))
                         .name("Tasks Completed")
                 );
             });

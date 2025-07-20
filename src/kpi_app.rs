@@ -1,8 +1,5 @@
 use egui::*;
 use egui_plot::{Line, Plot, PlotPoints};
-use chrono::{DateTime, Utc, Duration};
-use crate::task::TaskManager;
-use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct KpiApp {
