@@ -1,11 +1,9 @@
 use egui::{Context, CentralPanel, Layout, Align, ScrollArea, Color32};
 use eframe::App;
-use crate::kpi_app::KpiApp;
 
 #[derive(Default)]
 pub struct TaskManagerApp {
     current_view: AppView,
-    kpi_app: KpiApp,
     // Task-related state
     new_task_title: String,
     new_task_description: String,
@@ -205,10 +203,10 @@ impl TaskManagerApp {
         // Inline KPI content instead of delegating to separate app
         
         ui.horizontal(|ui| {
-            ui.selectable_label(true, "📊 Overview");
-            ui.selectable_label(false, "📈 Task Creation");
-            ui.selectable_label(false, "⏱️ Completion Time");
-            ui.selectable_label(false, "🚀 Productivity");
+            let _ = ui.selectable_label(true, "📊 Overview");
+            let _ = ui.selectable_label(false, "📈 Task Creation");
+            let _ = ui.selectable_label(false, "⏱️ Completion Time");
+            let _ = ui.selectable_label(false, "🚀 Productivity");
         });
         
         ui.separator();
