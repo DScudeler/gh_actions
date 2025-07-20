@@ -1,7 +1,6 @@
 use wasm_bindgen::prelude::*;
 use crate::task::{TaskManager, Task};
 use std::sync::Mutex;
-use std::collections::HashMap;
 
 // Global task manager instance
 lazy_static::lazy_static! {
@@ -73,8 +72,8 @@ pub fn get_all_tasks_json() -> String {
 #[wasm_bindgen]
 pub struct WasmTask {
     pub id: u32,
-    pub title: String,
-    pub description: String,
+    title: String,
+    description: String,
     pub completed: bool,
 }
 

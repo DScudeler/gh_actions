@@ -1,5 +1,3 @@
-use wasm_bindgen::prelude::*;
-
 pub mod task;
 pub mod wasm;
 pub mod user_manager;
