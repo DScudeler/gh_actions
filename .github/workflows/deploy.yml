@@ -65,6 +65,7 @@ jobs:
       uses: actions/upload-pages-artifact@v3
       with:
         path: _site
+        name: github-pages
 
   deploy:
     name: Deploy to GitHub Pages  
