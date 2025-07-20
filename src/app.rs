@@ -1,6 +1,5 @@
 use egui::{Context, CentralPanel, Layout, Align, ScrollArea, Color32};
 use eframe::App;
-use egui_plot::{Line, Plot, PlotPoints};
 use crate::kpi_app::KpiApp;
 
 #[derive(Default)]
