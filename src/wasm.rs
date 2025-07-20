@@ -71,10 +71,10 @@ pub fn get_all_tasks_json() -> String {
 
 #[wasm_bindgen]
 pub struct WasmTask {
-    pub id: u32,
+    id: u32,
     title: String,
     description: String,
-    pub completed: bool,
+    completed: bool,
 }
 
 #[wasm_bindgen]
