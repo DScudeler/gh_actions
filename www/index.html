@@ -203,6 +203,27 @@
 
         let wasmModule = null;
 
+        // localStorage functions for WASM to call
+        window.saveToLocalStorage = function(data) {
+            try {
+                localStorage.setItem('wasm-tasks', data);
+                console.log('Tasks saved to localStorage');
+            } catch (error) {
+                console.error('Failed to save to localStorage:', error);
+            }
+        };
+
+        window.loadFromLocalStorage = function() {
+            try {
+                const data = localStorage.getItem('wasm-tasks');
+                console.log('Loading tasks from localStorage:', data ? 'found data' : 'no data');
+                return data || '';
+            } catch (error) {
+                console.error('Failed to load from localStorage:', error);
+                return '';
+            }
+        };
+
         async function initWasm() {
             try {
                 wasmModule = await init();

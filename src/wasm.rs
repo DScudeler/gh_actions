@@ -11,6 +11,13 @@ lazy_static::lazy_static! {
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
     fn log(s: &str);
+    
+    // localStorage bindings
+    #[wasm_bindgen(js_name = saveToLocalStorage)]
+    fn save_to_local_storage(data: &str);
+    
+    #[wasm_bindgen(js_name = loadFromLocalStorage)]
+    fn load_from_local_storage() -> String;
 }
 
 // Macro for console.log
@@ -18,9 +25,48 @@ macro_rules! console_log {
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
 }
 
+// Helper function to save tasks to localStorage
+fn save_tasks() {
+    let manager = TASK_MANAGER.lock().unwrap();
+    let tasks = manager.get_all_tasks();
+    match serde_json::to_string(&tasks) {
+        Ok(json) => {
+            save_to_local_storage(&json);
+            console_log!("Tasks saved to localStorage");
+        },
+        Err(e) => console_log!("Failed to serialize tasks: {:?}", e),
+    }
+}
+
+// Helper function to load tasks from localStorage
+fn load_tasks() {
+    let json = load_from_local_storage();
+    if !json.is_empty() && json != "null" {
+        match serde_json::from_str::<Vec<Task>>(&json) {
+            Ok(tasks) => {
+                let mut manager = TASK_MANAGER.lock().unwrap();
+                // Clear existing tasks and load from storage
+                *manager = TaskManager::new();
+                for task in tasks {
+                    // Find the maximum ID to continue sequence
+                    if task.id >= manager.next_id {
+                        manager.next_id = task.id + 1;
+                    }
+                    manager.tasks.insert(task.id, task);
+                }
+                console_log!("Loaded {} tasks from localStorage", manager.get_total_count());
+            },
+            Err(e) => console_log!("Failed to parse tasks from localStorage: {:?}", e),
+        }
+    } else {
+        console_log!("No tasks found in localStorage");
+    }
+}
+
 #[wasm_bindgen]
 pub fn init() {
     console_log!("WASM Task Manager initialized!");
+    load_tasks();
 }
 
 #[wasm_bindgen]
@@ -28,6 +74,8 @@ pub fn add_task(title: String, description: String) -> u32 {
     let mut manager = TASK_MANAGER.lock().unwrap();
     let id = manager.add_task(title, description);
     console_log!("Added task with id: {}", id);
+    drop(manager); // Release the lock before saving
+    save_tasks();
     id
 }
 
@@ -36,6 +84,8 @@ pub fn toggle_task(id: u32) -> bool {
     let mut manager = TASK_MANAGER.lock().unwrap();
     let success = manager.toggle_task(id);
     console_log!("Toggled task {}: {}", id, success);
+    drop(manager); // Release the lock before saving
+    save_tasks();
     success
 }
 
@@ -44,6 +94,8 @@ pub fn remove_task(id: u32) -> bool {
     let mut manager = TASK_MANAGER.lock().unwrap();
     let success = manager.remove_task(id);
     console_log!("Removed task {}: {}", id, success);
+    drop(manager); // Release the lock before saving
+    save_tasks();
     success
 }
 
