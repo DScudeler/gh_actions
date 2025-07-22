@@ -209,7 +209,7 @@ impl TaskManager {
         let total_recent_completions: usize = recent_completions.iter()
             .map(|(_, count)| count)
             .sum();
-        let completion_velocity = total_recent_completions as f64 / 7.0; // tasks per day
+        let _completion_velocity = total_recent_completions as f64 / 7.0; // tasks per day
         
         let mut predictions = Vec::new();
         
