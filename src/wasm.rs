@@ -125,6 +125,81 @@ pub fn get_all_tasks_json() -> String {
 }
 
 #[wasm_bindgen]
+pub fn get_completed_tasks_time_series(days: u32) -> String {
+    let manager = TASK_MANAGER.lock().unwrap();
+    let series = manager.get_completed_tasks_time_series(days);
+    
+    // Convert to format suitable for plotting: [[day_offset, count], ...]
+    let plot_data: Vec<[f64; 2]> = series.iter().enumerate()
+        .map(|(i, (_, count))| [i as f64, *count as f64])
+        .collect();
+    
+    match serde_json::to_string(&plot_data) {
+        Ok(json) => json,
+        Err(_) => "[]".to_string(),
+    }
+}
+
+#[wasm_bindgen]
+pub fn get_incomplete_tasks_time_series(days: u32) -> String {
+    let manager = TASK_MANAGER.lock().unwrap();
+    let series = manager.get_incomplete_tasks_time_series(days);
+    
+    // Convert to format suitable for plotting: [[day_offset, count], ...]
+    let plot_data: Vec<[f64; 2]> = series.iter().enumerate()
+        .map(|(i, (_, count))| [i as f64, *count as f64])
+        .collect();
+    
+    match serde_json::to_string(&plot_data) {
+        Ok(json) => json,
+        Err(_) => "[]".to_string(),
+    }
+}
+
+#[wasm_bindgen]
+pub fn get_cumulative_completed_time_series(days: u32) -> String {
+    let manager = TASK_MANAGER.lock().unwrap();
+    let series = manager.get_cumulative_completed_time_series(days);
+    
+    // Convert to format suitable for plotting: [[day_offset, count], ...]
+    let plot_data: Vec<[f64; 2]> = series.iter().enumerate()
+        .map(|(i, (_, count))| [i as f64, *count as f64])
+        .collect();
+    
+    match serde_json::to_string(&plot_data) {
+        Ok(json) => json,
+        Err(_) => "[]".to_string(),
+    }
+}
+
+#[wasm_bindgen]
+pub fn get_average_completion_time() -> f64 {
+    let manager = TASK_MANAGER.lock().unwrap();
+    manager.get_average_completion_time_hours().unwrap_or(0.0)
+}
+
+#[wasm_bindgen]
+pub fn get_task_completion_predictions() -> String {
+    let manager = TASK_MANAGER.lock().unwrap();
+    let predictions = manager.predict_task_completion_times();
+    
+    // Convert to JSON format: [{"task_id": 1, "predicted_hours": 2.5}, ...]
+    let prediction_objects: Vec<serde_json::Value> = predictions.iter()
+        .map(|(task_id, hours)| {
+            serde_json::json!({
+                "task_id": task_id,
+                "predicted_hours": hours
+            })
+        })
+        .collect();
+    
+    match serde_json::to_string(&prediction_objects) {
+        Ok(json) => json,
+        Err(_) => "[]".to_string(),
+    }
+}
+
+#[wasm_bindgen]
 pub struct WasmTask {
     id: u32,
     title: String,
