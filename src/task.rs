@@ -119,6 +119,122 @@ impl TaskManager {
             Some(completed_tasks.iter().sum::<f64>() / completed_tasks.len() as f64)
         }
     }
+    
+    /// Get time series data for completed tasks over the last N days
+    pub fn get_completed_tasks_time_series(&self, days: u32) -> Vec<(DateTime<Utc>, usize)> {
+        let now = Utc::now();
+        let mut series = Vec::new();
+        
+        for day in 0..days {
+            let date = now - chrono::Duration::days(day as i64);
+            let start_of_day = date.date_naive().and_hms_opt(0, 0, 0).unwrap().and_utc();
+            let end_of_day = date.date_naive().and_hms_opt(23, 59, 59).unwrap().and_utc();
+            
+            let completed_count = self.tasks.values()
+                .filter(|task| {
+                    if let Some(completed_at) = task.completed_at {
+                        completed_at >= start_of_day && completed_at <= end_of_day
+                    } else {
+                        false
+                    }
+                })
+                .count();
+                
+            series.push((start_of_day, completed_count));
+        }
+        
+        series.reverse(); // Order chronologically
+        series
+    }
+    
+    /// Get time series data for incomplete tasks over the last N days
+    pub fn get_incomplete_tasks_time_series(&self, days: u32) -> Vec<(DateTime<Utc>, usize)> {
+        let now = Utc::now();
+        let mut series = Vec::new();
+        
+        for day in 0..days {
+            let date = now - chrono::Duration::days(day as i64);
+            let end_of_day = date.date_naive().and_hms_opt(23, 59, 59).unwrap().and_utc();
+            
+            // Count tasks that were incomplete at end of this day
+            let incomplete_count = self.tasks.values()
+                .filter(|task| {
+                    // Task was created before or on this day
+                    task.created_at <= end_of_day &&
+                    // Task was not completed or was completed after this day
+                    (task.completed_at.is_none() || 
+                     task.completed_at.map(|c| c > end_of_day).unwrap_or(false))
+                })
+                .count();
+                
+            series.push((end_of_day, incomplete_count));
+        }
+        
+        series.reverse(); // Order chronologically
+        series
+    }
+    
+    /// Get cumulative completed tasks over time
+    pub fn get_cumulative_completed_time_series(&self, days: u32) -> Vec<(DateTime<Utc>, usize)> {
+        let now = Utc::now();
+        let mut series = Vec::new();
+        
+        for day in 0..days {
+            let date = now - chrono::Duration::days(day as i64);
+            let end_of_day = date.date_naive().and_hms_opt(23, 59, 59).unwrap().and_utc();
+            
+            let cumulative_count = self.tasks.values()
+                .filter(|task| {
+                    if let Some(completed_at) = task.completed_at {
+                        completed_at <= end_of_day
+                    } else {
+                        false
+                    }
+                })
+                .count();
+                
+            series.push((end_of_day, cumulative_count));
+        }
+        
+        series.reverse(); // Order chronologically
+        series
+    }
+    
+    /// Predict completion time for incomplete tasks based on historical data
+    pub fn predict_task_completion_times(&self) -> Vec<(u32, f64)> {
+        let avg_completion_time = self.get_average_completion_time_hours().unwrap_or(24.0);
+        
+        // Get completion velocity (tasks completed per day in last 7 days)
+        let recent_completions = self.get_completed_tasks_time_series(7);
+        let total_recent_completions: usize = recent_completions.iter()
+            .map(|(_, count)| count)
+            .sum();
+        let completion_velocity = total_recent_completions as f64 / 7.0; // tasks per day
+        
+        let mut predictions = Vec::new();
+        
+        // For each incomplete task, predict completion time
+        for task in self.tasks.values() {
+            if !task.completed {
+                let hours_since_creation = Utc::now()
+                    .signed_duration_since(task.created_at)
+                    .num_seconds() as f64 / 3600.0;
+                
+                // Simple prediction: average completion time adjusted by task age
+                // If task is older than average, it might take longer
+                let age_factor = if hours_since_creation > avg_completion_time {
+                    1.0 + (hours_since_creation - avg_completion_time) / avg_completion_time * 0.5
+                } else {
+                    1.0
+                };
+                
+                let predicted_hours = avg_completion_time * age_factor;
+                predictions.push((task.id, predicted_hours));
+            }
+        }
+        
+        predictions
+    }
 }
 
 #[cfg(test)]

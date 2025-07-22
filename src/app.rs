@@ -215,11 +215,13 @@ impl TaskManagerApp {
         // Get real task data for KPIs
         let total_tasks = crate::wasm::get_task_count();
         let completed_tasks = crate::wasm::get_completed_count();
+        let incomplete_tasks = total_tasks - completed_tasks;
         let completion_rate = if total_tasks > 0 {
             (completed_tasks as f32 / total_tasks as f32 * 100.0) as u32
         } else {
             0
         };
+        let avg_completion_time = crate::wasm::get_average_completion_time();
         
         ui.heading("KPI Overview");
         ui.add_space(10.0);
@@ -249,48 +251,126 @@ impl TaskManagerApp {
             ui.group(|ui| {
                 ui.vertical(|ui| {
                     ui.label("Avg. Time (hours)");
-                    ui.heading("2.3"); // Mock data for now
+                    ui.heading(if avg_completion_time > 0.0 {
+                        format!("{:.1}", avg_completion_time)
+                    } else {
+                        "N/A".to_string()
+                    });
                 });
             });
         });
         
         ui.add_space(20.0);
         
-        // Simple plot placeholder
-        ui.heading("📈 Task Completion Trend");
+        // Time series charts with real data
+        ui.heading("📈 Task Time Series Analysis");
         ui.add_space(10.0);
         
         use egui_plot::{Line, Plot, PlotPoints};
         
-        // Generate sample trend data
-        let mut points = Vec::new();
-        for i in 0..30 {
-            let x = i as f64;
-            let y = (completed_tasks as f64 / 30.0) * i as f64 + (i as f64 * 0.1).sin();
-            points.push([x, y]);
-        }
+        // Get real time series data
+        let completed_series_json = crate::wasm::get_completed_tasks_time_series(30);
+        let incomplete_series_json = crate::wasm::get_incomplete_tasks_time_series(30);
+        let cumulative_series_json = crate::wasm::get_cumulative_completed_time_series(30);
         
-        Plot::new("completion_trend")
-            .height(200.0)
+        Plot::new("time_series_plot")
+            .height(250.0)
             .show(ui, |plot_ui| {
-                plot_ui.line(
-                    Line::new(PlotPoints::from(points))
-                        .color(Color32::from_rgb(100, 200, 100))
-                        .name("Tasks Completed")
-                );
+                // Parse and plot completed tasks per day
+                if let Ok(completed_data) = serde_json::from_str::<Vec<[f64; 2]>>(&completed_series_json) {
+                    if !completed_data.is_empty() {
+                        plot_ui.line(
+                            Line::new(PlotPoints::from(completed_data))
+                                .color(Color32::from_rgb(100, 200, 100))
+                                .name("Tasks Completed/Day")
+                        );
+                    }
+                }
+                
+                // Parse and plot incomplete tasks
+                if let Ok(incomplete_data) = serde_json::from_str::<Vec<[f64; 2]>>(&incomplete_series_json) {
+                    if !incomplete_data.is_empty() {
+                        plot_ui.line(
+                            Line::new(PlotPoints::from(incomplete_data))
+                                .color(Color32::from_rgb(200, 100, 100))
+                                .name("Incomplete Tasks")
+                        );
+                    }
+                }
+                
+                // Parse and plot cumulative completed tasks
+                if let Ok(cumulative_data) = serde_json::from_str::<Vec<[f64; 2]>>(&cumulative_series_json) {
+                    if !cumulative_data.is_empty() {
+                        plot_ui.line(
+                            Line::new(PlotPoints::from(cumulative_data))
+                                .color(Color32::from_rgb(100, 100, 200))
+                                .name("Cumulative Completed")
+                        );
+                    }
+                }
             });
             
         ui.add_space(10.0);
-        ui.label("📊 Cumulative task completion over the last 30 days");
+        ui.label("📊 Real-time task metrics over the last 30 days");
+        
+        ui.add_space(20.0);
+        
+        // Task Completion Predictions
+        ui.heading("🔮 Task Completion Predictions");
+        ui.add_space(10.0);
+        
+        let predictions_json = crate::wasm::get_task_completion_predictions();
+        match serde_json::from_str::<Vec<serde_json::Value>>(&predictions_json) {
+            Ok(predictions) => {
+                if predictions.is_empty() {
+                    ui.label("No incomplete tasks to predict");
+                } else {
+                    ui.label(format!("Predictions for {} incomplete tasks:", predictions.len()));
+                    ui.add_space(5.0);
+                    
+                    // Show predictions in a scrollable area
+                    ScrollArea::vertical().max_height(150.0).show(ui, |ui| {
+                        for prediction in predictions.iter().take(10) { // Show max 10 predictions
+                            if let (Some(task_id), Some(predicted_hours)) = (
+                                prediction["task_id"].as_u64(),
+                                prediction["predicted_hours"].as_f64()
+                            ) {
+                                ui.horizontal(|ui| {
+                                    ui.label(format!("Task #{}: ", task_id));
+                                    if predicted_hours < 1.0 {
+                                        ui.label(format!("{:.0} minutes", predicted_hours * 60.0));
+                                    } else if predicted_hours < 24.0 {
+                                        ui.label(format!("{:.1} hours", predicted_hours));
+                                    } else {
+                                        ui.label(format!("{:.1} days", predicted_hours / 24.0));
+                                    }
+                                });
+                            }
+                        }
+                        
+                        if predictions.len() > 10 {
+                            ui.label(format!("... and {} more", predictions.len() - 10));
+                        }
+                    });
+                }
+            }
+            Err(_) => {
+                ui.label("Error loading predictions");
+            }
+        }
         
         ui.add_space(20.0);
         ui.label("📈 Insights:");
-        ui.label("• Task completion is steady");
-        ui.label("• Consider setting daily goals to improve productivity");
+        ui.label("• Task completion trends are based on real historical data");
+        ui.label("• Predictions use average completion time and task age factors");
         if completion_rate > 70 {
             ui.label("• Great job! You're completing most of your tasks");
         } else {
             ui.label("• Focus on completing existing tasks before adding new ones");
+        }
+        
+        if incomplete_tasks > 0 {
+            ui.label(format!("• You have {} incomplete tasks - consider prioritizing older ones", incomplete_tasks));
         }
     }
 }
